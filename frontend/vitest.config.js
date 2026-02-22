@@ -11,5 +11,8 @@ export default mergeConfig(viteConfig, defineConfig({
     setupFiles: ['./src/__tests__/setup.js'],
     include: ['src/**/*.test.js'],
     css: false,
+    coverage: {
+      exclude: ['svelte.config.js', 'vite.config.js', 'vitest.config.js', 'src/main.js'],
+    },
   },
 }))
