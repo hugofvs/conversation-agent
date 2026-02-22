@@ -1,17 +1,20 @@
 <script>
   let { role, text, isError = false } = $props()
-
-  let wrapperClass = $derived(
-    role === 'user' ? 'flex justify-end' : 'flex justify-start'
-  )
-
-  let bubbleClass = $derived(
-    role === 'user'
-      ? 'bg-blue-600 text-white rounded-2xl rounded-br-sm px-4 py-2 max-w-[75%]'
-      : `bg-white text-gray-800 rounded-2xl rounded-bl-sm px-4 py-2 max-w-[75%] shadow${isError ? ' text-red-600' : ''}`
-  )
 </script>
 
-<div class={wrapperClass}>
-  <div class={bubbleClass}>{text}</div>
-</div>
+{#if role === 'user'}
+  <div class="flex justify-end">
+    <div class="bg-amber text-white rounded-2xl rounded-br-sm px-5 py-3 max-w-[75%] text-[15px] leading-relaxed">
+      {text}
+    </div>
+  </div>
+{:else}
+  <div class="flex justify-start">
+    <div
+      class="bg-surface rounded-2xl rounded-bl-sm px-5 py-3 max-w-[75%] text-[15px] leading-relaxed shadow-[0_1px_4px_rgba(44,37,32,0.06)]"
+      class:text-red-700={isError}
+    >
+      {text}
+    </div>
+  </div>
+{/if}

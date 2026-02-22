@@ -103,6 +103,7 @@ async def build_system_prompt(ctx: RunContext[AgentDeps]) -> str:
         "2. For FLOW intent:",
         "   - Extract ALL answers the user provided in their message (they may answer multiple fields at once).",
         "   - Call update_state with a dict mapping field names to values. Use the exact enum values listed above.",
+        "   - ALWAYS include state_patch in your response with the extracted values, e.g. {\"display_name\": \"Alex\"}. This is required even when you call update_state.",
         "   - After updating, ask the next missing field. If the step is complete, acknowledge it and introduce the next step.",
         "   - Set mode='flow_question' in your response. Include next_question if there are still missing fields.",
         "",

@@ -163,6 +163,8 @@ class QuestionSpec(BaseModel):
     field_name: str
     question_text: str
     options: list[str] | None = None
+    default_value: str | None = None
+    multi_select: bool = False
 
 
 class AssistantResponse(BaseModel):

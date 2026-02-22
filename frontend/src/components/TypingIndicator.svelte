@@ -1,9 +1,9 @@
 <div class="flex justify-start">
-  <div class="bg-white text-gray-800 rounded-2xl rounded-bl-sm px-4 py-2 max-w-[75%] shadow">
-    <span class="inline-flex gap-1">
-      <span class="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style="animation-delay: 0ms;"></span>
-      <span class="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style="animation-delay: 150ms;"></span>
-      <span class="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style="animation-delay: 300ms;"></span>
+  <div class="bg-surface rounded-2xl rounded-bl-sm px-5 py-3.5 shadow-[0_1px_4px_rgba(44,37,32,0.06)]">
+    <span class="inline-flex gap-1.5 items-center">
+      <span class="w-1.5 h-1.5 bg-ink-muted rounded-full animate-bounce" style="animation-delay: 0ms;"></span>
+      <span class="w-1.5 h-1.5 bg-ink-muted rounded-full animate-bounce" style="animation-delay: 150ms;"></span>
+      <span class="w-1.5 h-1.5 bg-ink-muted rounded-full animate-bounce" style="animation-delay: 300ms;"></span>
     </span>
   </div>
 </div>
