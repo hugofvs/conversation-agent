@@ -6,35 +6,15 @@
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind-4.2-38B2AC.svg)](https://tailwindcss.com)
 [![Tests](https://img.shields.io/badge/coverage-93%25-brightgreen.svg)](#testing)
 
-An AI-powered onboarding assistant that guides users through a multi-step profile setup via natural conversation. Built with FastAPI, Pydantic AI, and Svelte 5.
+An AI-powered onboarding assistant that guides users through a multi-step profile setup via natural conversation. 
 
 ## Features
 
-- **3-step onboarding flow** &mdash; Profile, Food preferences, and Anime tastes, collected conversationally
-- **Intent classification** &mdash; The LLM distinguishes between answers (FLOW), questions (QUESTION), and off-topic messages (GUARDRAIL)
-- **RAG knowledge base** &mdash; Answers questions about diet types, anime genres, and the onboarding process using semantic search
-- **Editable side panel** &mdash; Users can fill fields directly via a form; changes sync back into the conversation
-- **Proactive assistant** &mdash; The assistant initiates the conversation on load and re-engages after form edits
-- **Output validation** &mdash; Ensures the LLM always calls the state update tool when the user provides an answer
-
-## Architecture
-
-```
-┌──────────────┐        ┌──────────────────────────────┐
-│   Svelte 5   │  POST  │         FastAPI               │
-│   Frontend   │───────>│  /chat     → Pydantic AI Agent│
-│              │  PATCH  │  /state   → Direct state update│
-│  Tailwind UI │<───────│                                │
-└──────────────┘        │  Agent tools:                  │
-                        │   - update_state (field patch)  │
-                        │   - rag_search  (vector search) │
-                        └──────────────────────────────────┘
-                                       │
-                         ┌─────────────┴─────────────┐
-                         │    OpenAI gpt-4o-mini      │
-                         │    text-embedding-3-small  │
-                         └───────────────────────────┘
-```
+- **3-step onboarding flow:** Profile, Food preferences, and Anime tastes, collected conversationally
+- **Intent classification:** The LLM distinguishes between answers, questions, and off-topic messages (GUARDRAIL)
+- **RAG knowledge base:** Answers questions during the onboarding process using semantic search
+- **Editable side panel:** Users can fill fields directly via a form and sync back into the conversation
+- **Output validation:** Ensures the LLM always calls the state update tool when the user provides an answer
 
 ## Prerequisites
 
@@ -48,7 +28,7 @@ An AI-powered onboarding assistant that guides users through a multi-step profil
 ### 1. Clone and install
 
 ```bash
-git clone https://github.com/<your-username>/conversation-agent.git
+git clone https://github.com/hugofvs/conversation-agent.git
 cd conversation-agent
 
 # Backend
@@ -63,7 +43,7 @@ cd frontend && npm install && cd ..
 Create a `.env` file in the project root:
 
 ```
-OPENAI_API_KEY=sk-...
+OPENAI_API_KEY=...
 ```
 
 ### 3. Build the frontend
@@ -180,13 +160,6 @@ npx vitest run --coverage
 # Watch mode
 npm test
 ```
-
-### Coverage
-
-| Layer | Statements | Functions |
-|-------|-----------|-----------|
-| Python | 93% | - |
-| Frontend | 93% | 91% |
 
 ## Tech Stack
 
