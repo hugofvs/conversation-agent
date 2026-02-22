@@ -16,6 +16,7 @@
   let activeQuestion = $state(null)
   let onboardingState = $state({ profile: {}, food: {}, anime: {} })
   let panelOpen = $state(false)
+  let formTouched = $state(false)
   let messagesEl
   let chatInputEl
 
@@ -69,8 +70,33 @@
         anime: resp.state.anime,
       }
       activeQuestion = resp.next_question ?? null
+      formTouched = true
     } catch (err) {
       console.error('Failed to update field:', err)
+    }
+  }
+
+  async function syncStateFromForm() {
+    if (!formTouched || !sessionId) return
+    formTouched = false
+    try {
+      const resp = await patchState(sessionId, {})
+      currentStep = resp.state.current_step
+      onboardingState = {
+        profile: resp.state.profile,
+        food: resp.state.food,
+        anime: resp.state.anime,
+      }
+      activeQuestion = resp.next_question ?? null
+    } catch (err) {
+      console.error('Failed to sync state:', err)
+    }
+  }
+
+  function handlePanelToggle() {
+    panelOpen = !panelOpen
+    if (!panelOpen) {
+      chatInputEl?.focus()
     }
   }
 </script>
@@ -107,7 +133,7 @@
         </div>
       </div>
 
-      <ChatInput onSend={handleSend} disabled={isLoading} {activeQuestion} bind:this={chatInputEl} />
+      <ChatInput onSend={handleSend} disabled={isLoading} {activeQuestion} onFocus={syncStateFromForm} bind:this={chatInputEl} />
     </main>
 
     <SidePanel
@@ -115,7 +141,7 @@
       {activeFieldName}
       {currentStep}
       open={panelOpen}
-      onToggle={() => panelOpen = !panelOpen}
+      onToggle={handlePanelToggle}
       disabled={isLoading}
       onFieldUpdate={handleFieldUpdate}
     />

@@ -1,5 +1,5 @@
 <script>
-  let { onSend, disabled = false, activeQuestion = null } = $props()
+  let { onSend, disabled = false, activeQuestion = null, onFocus: onFocusCb = null } = $props()
   let inputText = $state('')
   let inputEl
   let highlightedIndex = $state(-1)
@@ -132,6 +132,7 @@
     if (useAutocomplete) {
       dropdownOpen = true
     }
+    onFocusCb?.()
   }
 
   function handleBlur(e) {
