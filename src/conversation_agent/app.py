@@ -10,6 +10,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from pydantic_ai import Embedder
+from pydantic_ai.messages import ModelRequest, ModelResponse, TextPart, UserPromptPart
 
 from .agent import AgentDeps, agent
 from .models import (
@@ -229,6 +230,29 @@ async def patch_state(req: StateUpdateRequest):
         raise HTTPException(status_code=404, detail="Session not found")
 
     apply_state_updates(session.state, req.updates)
+
+    # Inject synthetic messages so the LLM sees a record of form-filled values
+    def _display_value(v: object) -> str:
+        if isinstance(v, list):
+            return ", ".join(enum_label(str(i)) for i in v)
+        if isinstance(v, bool):
+            return "yes" if v else "no"
+        return enum_label(str(v))
+
+    parts = [f"{k} = {_display_value(v)}" for k, v in req.updates.items()]
+    summary = ", ".join(parts)
+    session.history.append(
+        ModelRequest(parts=[
+            UserPromptPart(
+                content=f"[The user updated the following fields via the form: {summary}]"
+            )
+        ])
+    )
+    session.history.append(
+        ModelResponse(parts=[
+            TextPart(content="Noted, I've recorded those answers.")
+        ])
+    )
 
     # Derive next_question from current state
     stub = AssistantResponse(mode=ResponseMode.FLOW_QUESTION, message="")
