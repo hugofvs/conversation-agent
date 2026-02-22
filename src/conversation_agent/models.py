@@ -106,6 +106,17 @@ _STEP_ANSWERS_MAP: dict[FlowStep, type[BaseModel]] = {
 
 _STEP_ORDER = [FlowStep.PROFILE, FlowStep.FOOD, FlowStep.ANIME]
 
+_FIELD_TO_STEP: dict[str, FlowStep] = {
+    field_name: step
+    for step, model_cls in _STEP_ANSWERS_MAP.items()
+    for field_name in model_cls.model_fields
+}
+
+
+def field_to_step(field_name: str) -> FlowStep | None:
+    """Map a field name to the FlowStep that owns it."""
+    return _FIELD_TO_STEP.get(field_name)
+
 
 class AssistantState(BaseModel):
     current_step: FlowStep = FlowStep.PROFILE
@@ -153,6 +164,39 @@ class AssistantState(BaseModel):
 
 # ── Response models ────────────────────────────────────────────────────
 
+_DISPLAY_LABELS: dict[str, str] = {
+    "under_18": "Under 18",
+    "18_24": "18-24",
+    "25_34": "25-34",
+    "35_44": "35-44",
+    "45_plus": "45+",
+    "slice_of_life": "Slice of Life",
+    "sci_fi": "Sci-Fi",
+}
+
+
+_REVERSE_LABELS: dict[str, str] = {label.lower(): value for value, label in _DISPLAY_LABELS.items()}
+
+
+def enum_label(value: str) -> str:
+    """Convert a raw enum value to a human-readable label."""
+    if value in _DISPLAY_LABELS:
+        return _DISPLAY_LABELS[value]
+    return value.replace("_", " ").title()
+
+
+def normalize_enum_value(value: str) -> str:
+    """Convert a human-readable label back to a raw enum value.
+
+    Handles special-case labels via reverse lookup, then falls back to
+    lowercasing and replacing spaces/hyphens with underscores.
+    """
+    lower = value.lower()
+    if lower in _REVERSE_LABELS:
+        return _REVERSE_LABELS[lower]
+    return lower.replace("-", "_").replace(" ", "_")
+
+
 class RagSource(BaseModel):
     title: str
     content: str
@@ -163,6 +207,7 @@ class QuestionSpec(BaseModel):
     field_name: str
     question_text: str
     options: list[str] | None = None
+    option_labels: list[str] | None = None
     default_value: str | None = None
     multi_select: bool = False
 

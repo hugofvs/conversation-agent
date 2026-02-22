@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -24,9 +24,12 @@ from .models import (
     ResponseMode,
     SubDubPref,
     _STEP_ANSWERS_MAP,
+    enum_label,
+    field_to_step,
+    normalize_enum_value,
 )
 from .rag import VectorStore
-from .session import get_or_create_session
+from .session import get_or_create_session, get_session
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 STATIC_DIR = PROJECT_ROOT / "static"
@@ -59,29 +62,69 @@ _FIELD_OPTIONS: dict[str, tuple[list[str], str | None, bool]] = {
 }
 
 
+def apply_state_updates(state: AssistantState, patch: dict) -> None:
+    """Apply a field-name → value patch to the state, validating via Pydantic.
+
+    Works across steps: each field is routed to the step that owns it.
+    After merging, missing fields are recomputed and the step advances if complete.
+    """
+    # Group fields by step
+    by_step: dict[FlowStep, dict] = {}
+    for key, value in patch.items():
+        step = field_to_step(key)
+        if step is None:
+            continue
+        by_step.setdefault(step, {})[key] = value
+
+    for step, fields in by_step.items():
+        answers = state._answers_for_step(step)
+        model_cls = _STEP_ANSWERS_MAP[step]
+        current = answers.model_dump()
+        for key, value in fields.items():
+            if key in current:
+                current[key] = value
+        try:
+            updated = model_cls.model_validate(current)
+        except Exception:
+            # Retry with normalized enum values
+            current = answers.model_dump()
+            for key, value in fields.items():
+                if key in current:
+                    if isinstance(value, str):
+                        current[key] = normalize_enum_value(value)
+                    elif isinstance(value, list):
+                        current[key] = [
+                            normalize_enum_value(v) if isinstance(v, str) else v
+                            for v in value
+                        ]
+                    else:
+                        current[key] = value
+            try:
+                updated = model_cls.model_validate(current)
+            except Exception:
+                continue
+        setattr(state, step.value, updated)
+
+    # Recompute missing fields for all touched steps and advance
+    for step in by_step:
+        state.compute_missing_fields(step)
+    # Advance from current step if complete
+    state.advance_step()
+
+
 def _apply_state_patch(patch: dict, state: AssistantState) -> None:
     """Apply state_patch from the LLM response as a fallback when update_state tool wasn't called."""
+    if state.current_step == FlowStep.DONE:
+        return
+    # Only apply fields that are still None (fallback behavior)
     step = state.current_step
-    if step == FlowStep.DONE:
-        return
     answers = state._answers_for_step(step)
-    model_cls = _STEP_ANSWERS_MAP[step]
-    current = answers.model_dump()
-    changed = False
-    for key, value in patch.items():
-        if key in current and current[key] is None and value is not None:
-            current[key] = value
-            changed = True
-    if not changed:
-        return
-    try:
-        updated = model_cls.model_validate(current)
-    except Exception:
-        return
-    setattr(state, step.value, updated)
-    missing = state.compute_missing_fields()
-    if not missing:
-        state.advance_step()
+    filtered = {
+        k: v for k, v in patch.items()
+        if hasattr(answers, k) and getattr(answers, k) is None and v is not None
+    }
+    if filtered:
+        apply_state_updates(state, filtered)
 
 
 def _attach_next_question(
@@ -100,10 +143,12 @@ def _attach_next_question(
         else ""
     )
     options, default, multi = _FIELD_OPTIONS.get(field, (None, None, False))
+    option_labels = [enum_label(o) for o in options] if options else None
     response.next_question = QuestionSpec(
         field_name=field,
         question_text=question_text,
         options=options,
+        option_labels=option_labels,
         default_value=default,
         multi_select=multi,
     )
@@ -118,6 +163,16 @@ class ChatResponse(BaseModel):
     session_id: str
     response: AssistantResponse
     state: AssistantState
+
+
+class StateUpdateRequest(BaseModel):
+    session_id: str
+    updates: dict
+
+
+class StateUpdateResponse(BaseModel):
+    state: AssistantState
+    next_question: QuestionSpec | None = None
 
 
 @app.get("/")
@@ -162,4 +217,22 @@ async def chat(req: ChatRequest):
         session_id=session_id,
         response=result.output,
         state=session.state,
+    )
+
+
+@app.patch("/state", response_model=StateUpdateResponse)
+async def patch_state(req: StateUpdateRequest):
+    session = get_session(req.session_id)
+    if session is None:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    apply_state_updates(session.state, req.updates)
+
+    # Derive next_question from current state
+    stub = AssistantResponse(mode=ResponseMode.FLOW_QUESTION, message="")
+    _attach_next_question(stub, session.state)
+
+    return StateUpdateResponse(
+        state=session.state,
+        next_question=stub.next_question,
     )

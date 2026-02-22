@@ -17,6 +17,8 @@ from .models import (
     ProfileAnswers,
     SubDubPref,
     _STEP_ANSWERS_MAP,
+    enum_label,
+    normalize_enum_value,
 )
 from .rag import VectorStore
 
@@ -35,7 +37,13 @@ agent = Agent(
 )
 
 
-def _enum_values(enum_cls: type) -> str:
+def _enum_labels(enum_cls: type) -> str:
+    """Human-readable labels for use in conversation."""
+    return ", ".join(enum_label(e.value) for e in enum_cls)
+
+
+def _enum_raw_values(enum_cls: type) -> str:
+    """Raw enum values for use in update_state tool calls."""
     return ", ".join(e.value for e in enum_cls)
 
 
@@ -51,17 +59,17 @@ def _format_answers(answers) -> str:
 _STEP_FIELDS: dict[FlowStep, dict[str, str]] = {
     FlowStep.PROFILE: {
         "display_name": "a free-text string (the user's preferred name)",
-        "age_range": f"one of: {_enum_values(AgeRange)}",
+        "age_range": f"one of: {_enum_labels(AgeRange)} (raw values for update_state: {_enum_raw_values(AgeRange)})",
         "country": "a free-text string (country of residence)",
     },
     FlowStep.FOOD: {
-        "diet": f"one of: {_enum_values(DietType)}",
-        "allergies": f"a list from: {_enum_values(Allergen)}",
-        "spice_ok": "true or false",
+        "diet": f"one of: {_enum_labels(DietType)} (raw values for update_state: {_enum_raw_values(DietType)})",
+        "allergies": f"a list from: {_enum_labels(Allergen)} (raw values for update_state: {_enum_raw_values(Allergen)})",
+        "spice_ok": f"Yes or No (raw values for update_state: true, false)",
     },
     FlowStep.ANIME: {
-        "favorite_genres": f"a list from: {_enum_values(AnimeGenre)}",
-        "sub_or_dub": f"one of: {_enum_values(SubDubPref)}",
+        "favorite_genres": f"a list from: {_enum_labels(AnimeGenre)} (raw values for update_state: {_enum_raw_values(AnimeGenre)})",
+        "sub_or_dub": f"one of: {_enum_labels(SubDubPref)} (raw values for update_state: {_enum_raw_values(SubDubPref)})",
         "top_3_anime": "a list of up to 3 anime titles (free-text strings)",
     },
 }
@@ -163,11 +171,26 @@ async def update_state(ctx: RunContext[AgentDeps], patch: dict[str, object]) -> 
         if key in current:
             current[key] = value
 
-    # Validate via Pydantic
+    # Validate via Pydantic — retry with normalized labels if first attempt fails
     try:
         updated = model_cls.model_validate(current)
-    except Exception as e:
-        return f"Validation error: {e}. Please check the values and try again."
+    except Exception:
+        current = answers.model_dump()
+        for key, value in patch.items():
+            if key in current:
+                if isinstance(value, str):
+                    current[key] = normalize_enum_value(value)
+                elif isinstance(value, list):
+                    current[key] = [
+                        normalize_enum_value(v) if isinstance(v, str) else v
+                        for v in value
+                    ]
+                else:
+                    current[key] = value
+        try:
+            updated = model_cls.model_validate(current)
+        except Exception as e:
+            return f"Validation error: {e}. Please check the values and try again."
 
     # Apply back to state
     setattr(state, step.value, updated)

@@ -24,6 +24,6 @@
   }
 }
 
-#messages::-webkit-scrollbar { width: 5px; }
-#messages::-webkit-scrollbar-thumb { background: var(--color-ink-muted); border-radius: 3px; }
-#messages::-webkit-scrollbar-track { background: transparent; }
+#messages::-webkit-scrollbar, #panel-scroll::-webkit-scrollbar { width: 5px; }
+#messages::-webkit-scrollbar-thumb, #panel-scroll::-webkit-scrollbar-thumb { background: var(--color-ink-muted); border-radius: 3px; }
+#messages::-webkit-scrollbar-track, #panel-scroll::-webkit-scrollbar-track { background: transparent; }
