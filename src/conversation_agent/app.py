@@ -185,7 +185,20 @@ async def chat(req: ChatRequest):
     session_id, session = get_or_create_session(req.session_id)
     assert _vector_store is not None
 
-    deps = AgentDeps(state=session.state, vector_store=_vector_store)
+    # Snapshot state before agent run so we can detect if the LLM updated it
+    missing_before = (
+        list(session.state.compute_missing_fields())
+        if session.state.current_step != FlowStep.DONE else []
+    )
+    has_prior_turns = len(session.history) > 0
+
+    deps = AgentDeps(
+        state=session.state,
+        vector_store=_vector_store,
+        has_prior_turns=has_prior_turns,
+        missing_before=missing_before,
+        user_message=req.message,
+    )
 
     result = await agent.run(
         req.message,
@@ -196,18 +209,7 @@ async def chat(req: ChatRequest):
     # Append new messages to session history
     session.history.extend(result.new_messages())
 
-    # Debug: check state after agent run
-    import sys
-    print(f"[DEBUG] profile after run: {session.state.profile.model_dump()}", file=sys.stderr)
-    print(f"[DEBUG] current_step: {session.state.current_step}", file=sys.stderr)
-    for msg in result.new_messages():
-        if hasattr(msg, 'parts'):
-            for part in msg.parts:
-                ptype = type(part).__name__
-                if 'Tool' in ptype:
-                    print(f"[DEBUG] {ptype}: {getattr(part, 'tool_name', '')} {getattr(part, 'content', '')[:200]}", file=sys.stderr)
-
-    # Apply state_patch as fallback when LLM skips the update_state tool call
+    # Fallback: apply state_patch when LLM skips the update_state tool call
     if result.output.state_patch:
         _apply_state_patch(result.output.state_patch, session.state)
 

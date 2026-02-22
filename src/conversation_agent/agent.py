@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
-from pydantic_ai import Agent, RunContext
+from pydantic_ai import Agent, ModelRetry, RunContext
 
 from .models import (
     AgeRange,
@@ -15,6 +15,7 @@ from .models import (
     FlowStep,
     FoodAnswers,
     ProfileAnswers,
+    ResponseMode,
     SubDubPref,
     _STEP_ANSWERS_MAP,
     enum_label,
@@ -23,10 +24,27 @@ from .models import (
 from .rag import VectorStore
 
 
+_QUESTION_STARTERS = (
+    "what", "how", "why", "when", "where", "which", "who",
+    "is", "are", "can", "do", "does", "could", "should", "would",
+    "tell me about", "explain",
+)
+
+
+def _looks_like_question(message: str) -> bool:
+    msg = message.strip().lower()
+    if msg.endswith("?"):
+        return True
+    return any(msg.startswith(w) for w in _QUESTION_STARTERS)
+
+
 @dataclass
 class AgentDeps:
     state: AssistantState
     vector_store: VectorStore
+    has_prior_turns: bool = False
+    missing_before: list[str] = field(default_factory=list)
+    user_message: str = ""
 
 
 agent = Agent(
@@ -110,8 +128,10 @@ async def build_system_prompt(ctx: RunContext[AgentDeps]) -> str:
         "",
         "2. For FLOW intent:",
         "   - Extract ALL answers the user provided in their message (they may answer multiple fields at once).",
-        "   - Call update_state with a dict mapping field names to values. Use the exact enum values listed above.",
-        "   - ALWAYS include state_patch in your response with the extracted values, e.g. {\"display_name\": \"Alex\"}. This is required even when you call update_state.",
+        "   - You MUST do BOTH of these steps — never skip either one:",
+        "     a) Call update_state tool with {field_name: value} for every extracted answer.",
+        "     b) Set state_patch in your response to the SAME dict, e.g. {\"display_name\": \"Alex\"}.",
+        "   - state_patch is REQUIRED whenever the user provides an answer. A null state_patch with mode='flow_question' is a bug.",
         "   - After updating, ask the next missing field. If the step is complete, acknowledge it and introduce the next step.",
         "   - Set mode='flow_question' in your response. Include next_question if there are still missing fields.",
         "",
@@ -127,9 +147,11 @@ async def build_system_prompt(ctx: RunContext[AgentDeps]) -> str:
         "",
         "5. When all steps are DONE, set mode='done' and give a friendly summary.",
         "",
-        "6. For the FIRST message of the conversation (empty/greeting), welcome the user and ask the first question of the Profile step.",
+        "6. For the FIRST message of the conversation:",
+        "   - If the message is a greeting (hi, hello, etc.), welcome the user and ask the first question.",
+        "   - If the message contains actual information (e.g. a name like 'Hugo'), treat it as an answer: call update_state AND set state_patch.",
         "",
-        "7. IMPORTANT: Always call update_state when the user provides answers. Never skip this tool call.",
+        "7. CRITICAL: When the user answers a question, you MUST call update_state AND set state_patch. Never produce a flow_question response with state_patch=null after the user gave an answer.",
     ])
 
     return "\n".join(prompt_parts)
@@ -204,3 +226,31 @@ async def update_state(ctx: RunContext[AgentDeps], patch: dict[str, object]) -> 
         return f"Step '{step.value}' complete! Moving to '{state.current_step.value}' step."
 
     return f"Updated. Still missing: {', '.join(missing)}"
+
+
+@agent.output_validator
+async def ensure_state_updated(
+    ctx: RunContext[AgentDeps], result: AssistantResponse
+) -> AssistantResponse:
+    """Force a retry when the LLM produces a flow_question without calling update_state."""
+    if result.mode != ResponseMode.FLOW_QUESTION:
+        return result
+    if not ctx.deps.has_prior_turns:
+        return result  # First message — may be a greeting, nothing to extract
+    if _looks_like_question(ctx.deps.user_message):
+        return result  # User asked a question, not providing an answer
+    state = ctx.deps.state
+    if state.current_step == FlowStep.DONE:
+        return result
+    # If missing fields changed, the tool was called successfully
+    missing_now = list(state.compute_missing_fields())
+    if missing_now != ctx.deps.missing_before:
+        return result
+    # state_patch fallback will handle this case in app.py
+    if result.state_patch:
+        return result
+    raise ModelRetry(
+        "You MUST call the update_state tool when the user provides an answer. "
+        "Re-read the user's message, extract their answer, and call update_state "
+        "with the correct field names and values."
+    )
