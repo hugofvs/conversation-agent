@@ -155,9 +155,36 @@ def _attach_next_question(
     )
 
 
+def _display_value(v: object) -> str:
+    if isinstance(v, list):
+        return ", ".join(enum_label(str(i)) for i in v)
+    if isinstance(v, bool):
+        return "yes" if v else "no"
+    return enum_label(str(v))
+
+
+def _inject_form_history(session, updates: dict) -> None:
+    """Append synthetic messages recording form-filled values into session history."""
+    parts = [f"{k} = {_display_value(v)}" for k, v in updates.items()]
+    summary = ", ".join(parts)
+    session.history.append(
+        ModelRequest(parts=[
+            UserPromptPart(
+                content=f"[The user updated the following fields via the form: {summary}]"
+            )
+        ])
+    )
+    session.history.append(
+        ModelResponse(parts=[
+            TextPart(content="Noted, I've recorded those answers.")
+        ])
+    )
+
+
 class ChatRequest(BaseModel):
     session_id: str | None = None
     message: str
+    auto: bool = False
 
 
 class ChatResponse(BaseModel):
@@ -199,6 +226,7 @@ async def chat(req: ChatRequest):
         has_prior_turns=has_prior_turns,
         missing_before=missing_before,
         user_message=req.message,
+        is_auto_trigger=req.auto,
     )
 
     result = await agent.run(
@@ -232,27 +260,8 @@ async def patch_state(req: StateUpdateRequest):
     apply_state_updates(session.state, req.updates)
 
     # Inject synthetic messages so the LLM sees a record of form-filled values
-    def _display_value(v: object) -> str:
-        if isinstance(v, list):
-            return ", ".join(enum_label(str(i)) for i in v)
-        if isinstance(v, bool):
-            return "yes" if v else "no"
-        return enum_label(str(v))
-
-    parts = [f"{k} = {_display_value(v)}" for k, v in req.updates.items()]
-    summary = ", ".join(parts)
-    session.history.append(
-        ModelRequest(parts=[
-            UserPromptPart(
-                content=f"[The user updated the following fields via the form: {summary}]"
-            )
-        ])
-    )
-    session.history.append(
-        ModelResponse(parts=[
-            TextPart(content="Noted, I've recorded those answers.")
-        ])
-    )
+    if req.updates:
+        _inject_form_history(session, req.updates)
 
     # Derive next_question from current state
     stub = AssistantResponse(mode=ResponseMode.FLOW_QUESTION, message="")

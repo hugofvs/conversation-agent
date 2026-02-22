@@ -45,6 +45,7 @@ class AgentDeps:
     has_prior_turns: bool = False
     missing_before: list[str] = field(default_factory=list)
     user_message: str = ""
+    is_auto_trigger: bool = False
 
 
 agent = Agent(
@@ -237,6 +238,8 @@ async def ensure_state_updated(
         return result
     if not ctx.deps.has_prior_turns:
         return result  # First message — may be a greeting, nothing to extract
+    if ctx.deps.is_auto_trigger:
+        return result  # Auto-triggered message (e.g. form return), nothing to extract
     if _looks_like_question(ctx.deps.user_message):
         return result  # User asked a question, not providing an answer
     state = ctx.deps.state

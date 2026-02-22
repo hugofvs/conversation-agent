@@ -29,7 +29,40 @@
     }
   }
 
+  async function triggerAssistant(message) {
+    isLoading = true
+    await scrollToBottom()
+    try {
+      const data = await sendMessage(message, sessionId, { auto: true })
+      sessionId = data.session_id
+      currentStep = data.state.current_step
+      activeQuestion = data.response.next_question ?? null
+      onboardingState = {
+        profile: data.state.profile ?? onboardingState.profile,
+        food: data.state.food ?? onboardingState.food,
+        anime: data.state.anime ?? onboardingState.anime,
+      }
+      messages.push({
+        role: 'assistant',
+        text: data.response.message,
+        sources: data.response.sources,
+      })
+    } catch (err) {
+      messages.push({ role: 'assistant', text: 'Error: ' + err.message, isError: true })
+    } finally {
+      isLoading = false
+      await scrollToBottom()
+    }
+  }
+
+  // Auto-init: greet the user on load
+  $effect(() => {
+    triggerAssistant('hi')
+    return () => {} // no cleanup
+  })
+
   async function handleSend(text) {
+    formTouched = false
     activeQuestion = null
     messages.push({ role: 'user', text })
     isLoading = true
@@ -79,18 +112,7 @@
   async function syncStateFromForm() {
     if (!formTouched || !sessionId) return
     formTouched = false
-    try {
-      const resp = await patchState(sessionId, {})
-      currentStep = resp.state.current_step
-      onboardingState = {
-        profile: resp.state.profile,
-        food: resp.state.food,
-        anime: resp.state.anime,
-      }
-      activeQuestion = resp.next_question ?? null
-    } catch (err) {
-      console.error('Failed to sync state:', err)
-    }
+    await triggerAssistant("I've updated my details in the form.")
   }
 
   function handlePanelToggle() {
@@ -113,14 +135,6 @@
     <main class="flex-1 flex flex-col min-w-0">
       <div id="messages" bind:this={messagesEl} class="flex-1 overflow-y-auto px-6 py-8 space-y-5">
         <div class="max-w-3xl mx-auto w-full space-y-5">
-          {#if messages.length === 0 && !isLoading}
-            <div class="flex-1 flex items-center justify-center h-full">
-              <div class="text-center">
-                <p class="font-serif text-lg text-ink/70">Tell me about yourself.</p>
-                <p class="text-sm text-ink-tertiary mt-2">Three chapters — profile, food, anime.</p>
-              </div>
-            </div>
-          {/if}
           {#each messages as msg}
             <ChatMessage role={msg.role} text={msg.text} isError={msg.isError} />
             {#if msg.sources}

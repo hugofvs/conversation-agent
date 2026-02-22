@@ -17,7 +17,7 @@ describe('sendMessage', () => {
     expect(fetch).toHaveBeenCalledWith('/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message: 'hello', session_id: 'sess-1' }),
+      body: JSON.stringify({ message: 'hello', session_id: 'sess-1', auto: false }),
     })
   })
 

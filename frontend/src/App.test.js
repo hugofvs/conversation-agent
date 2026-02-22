@@ -41,16 +41,33 @@ describe('App', () => {
     vi.restoreAllMocks()
   })
 
-  it('shows empty state when no messages', () => {
-    stubFetch(mockChatResponse())
+  it('auto-init greeting appears on load', async () => {
+    const data = mockChatResponse({ response: { message: 'Welcome! What is your name?' } })
+    stubFetch(data)
     render(App)
-    expect(screen.getByText('Tell me about yourself.')).toBeInTheDocument()
+
+    await waitFor(() => {
+      expect(screen.getByText('Welcome! What is your name?')).toBeInTheDocument()
+    })
+
+    // Should have sent an auto request
+    const body = JSON.parse(fetch.mock.calls[0][1].body)
+    expect(body.auto).toBe(true)
   })
 
   it('send message → user and assistant messages appear', async () => {
-    const data = mockChatResponse({ response: { message: 'Nice to meet you' } })
-    stubFetch(data)
+    const initData = mockChatResponse({ response: { message: 'Welcome!' } })
+    const replyData = mockChatResponse({ response: { message: 'Nice to meet you' } })
+    vi.stubGlobal('fetch', vi.fn()
+      .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve(initData) })
+      .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve(replyData) })
+    )
     render(App)
+
+    // Wait for auto-init to complete
+    await waitFor(() => {
+      expect(screen.getByText('Welcome!')).toBeInTheDocument()
+    })
 
     await sendUserMessage('Hi there')
 
@@ -70,11 +87,14 @@ describe('App', () => {
     ))
     const { container } = render(App)
 
-    await sendUserMessage('Hello')
-
-    // Typing indicator should be visible while waiting
+    // Auto-init triggers fetch, so typing indicator should appear
     await waitFor(() => {
       expect(container.querySelector('.animate-bounce')).toBeInTheDocument()
+    })
+
+    // Wait until fetch has actually been called
+    await waitFor(() => {
+      expect(fetch).toHaveBeenCalled()
     })
 
     // Resolve the fetch
@@ -96,19 +116,24 @@ describe('App', () => {
     }))
     render(App)
 
-    await sendUserMessage('Hello')
-
     await waitFor(() => {
       expect(screen.getByText('Error: Server error')).toBeInTheDocument()
     })
   })
 
   it('step progress updates after response', async () => {
-    const data = mockChatResponse({
-      state: { current_step: 'food' },
-    })
-    stubFetch(data)
+    const initData = mockChatResponse()
+    const replyData = mockChatResponse({ state: { current_step: 'food' } })
+    vi.stubGlobal('fetch', vi.fn()
+      .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve(initData) })
+      .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve(replyData) })
+    )
     const { container } = render(App)
+
+    // Wait for auto-init
+    await waitFor(() => {
+      expect(screen.getByText('Hello from assistant')).toBeInTheDocument()
+    })
 
     await sendUserMessage('My name is Hugo')
 
