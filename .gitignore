@@ -11,3 +11,9 @@ wheels/
 
 # Environment
 .env
+
+# Frontend build output
+static/
+
+# Frontend dependencies
+frontend/node_modules/
