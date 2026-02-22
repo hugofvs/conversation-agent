@@ -41,9 +41,9 @@
 <!-- Panel -->
 <aside
   class="
-    bg-surface border-l border-ink/8 flex flex-col
+    bg-surface border-l border-ink/8 flex flex-col min-h-0
     {open ? 'fixed inset-y-0 right-0 z-50 w-80' : 'hidden'}
-    lg:relative lg:block lg:z-auto lg:w-80 lg:shrink-0
+    lg:relative lg:flex lg:z-auto lg:w-80 lg:shrink-0
   "
 >
   <div class="px-4 py-4 border-b border-ink/8">
