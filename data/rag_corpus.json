@@ -1,0 +1,77 @@
+[
+  {
+    "id": "app-overview",
+    "title": "What is this app?",
+    "content": "This is a multi-step onboarding assistant that helps you create your personal profile through a guided conversation. It collects information about you in three steps: your basic profile, your food preferences, and your anime tastes. You can ask questions at any point without losing your progress."
+  },
+  {
+    "id": "flow-overview",
+    "title": "How the onboarding flow works",
+    "content": "The onboarding flow has three sequential steps: Profile, Food, and Anime. Each step asks a few questions to learn about you. You must complete all questions in a step before moving to the next. You can answer multiple questions at once in a single message. If you ask an unrelated question, the assistant will answer it and then return to the current step."
+  },
+  {
+    "id": "profile-step",
+    "title": "Profile step details",
+    "content": "The Profile step collects three pieces of information: your display name (what you'd like to be called), your age range (under 18, 18-24, 25-34, 35-44, or 45+), and your country of residence. This helps personalize your experience."
+  },
+  {
+    "id": "food-step",
+    "title": "Food preferences step details",
+    "content": "The Food step collects three pieces of information: your diet type (omnivore, vegetarian, vegan, pescatarian, keto, halal, kosher, or other), any food allergies you have (dairy, gluten, nuts, shellfish, soy, eggs, or none), and whether you enjoy spicy food (yes or no)."
+  },
+  {
+    "id": "anime-step",
+    "title": "Anime preferences step details",
+    "content": "The Anime step collects three pieces of information: your favorite anime genres (shonen, shojo, seinen, isekai, mecha, slice of life, horror, romance, comedy, fantasy, or sci-fi), whether you prefer sub (subtitled) or dub (dubbed) or both, and your top 3 favorite anime series of all time."
+  },
+  {
+    "id": "diet-omnivore",
+    "title": "Omnivore diet",
+    "content": "An omnivore diet includes all food types: meat, fish, dairy, eggs, fruits, vegetables, grains, and legumes. There are no specific food group restrictions."
+  },
+  {
+    "id": "diet-vegetarian",
+    "title": "Vegetarian diet",
+    "content": "A vegetarian diet excludes meat and fish but typically includes dairy products and eggs. Lacto-vegetarians eat dairy but not eggs, ovo-vegetarians eat eggs but not dairy, and lacto-ovo vegetarians eat both."
+  },
+  {
+    "id": "diet-vegan",
+    "title": "Vegan diet",
+    "content": "A vegan diet excludes all animal products including meat, fish, dairy, eggs, and honey. It focuses on plant-based foods like fruits, vegetables, grains, legumes, nuts, and seeds."
+  },
+  {
+    "id": "diet-pescatarian",
+    "title": "Pescatarian diet",
+    "content": "A pescatarian diet excludes meat but includes fish and seafood, along with dairy, eggs, and plant-based foods. It's sometimes chosen for health benefits associated with omega-3 fatty acids found in fish."
+  },
+  {
+    "id": "diet-keto",
+    "title": "Keto diet",
+    "content": "A ketogenic (keto) diet is very low in carbohydrates and high in fat. It typically limits carbs to 20-50 grams per day, causing the body to enter ketosis and burn fat for energy. Common foods include meats, fatty fish, eggs, butter, nuts, and low-carb vegetables."
+  },
+  {
+    "id": "genre-shonen",
+    "title": "Shonen anime genre",
+    "content": "Shonen anime targets young male audiences (roughly 12-18) and typically features action, adventure, and coming-of-age themes. Popular examples include Naruto, One Piece, Dragon Ball Z, My Hero Academia, and Demon Slayer."
+  },
+  {
+    "id": "genre-seinen",
+    "title": "Seinen anime genre",
+    "content": "Seinen anime targets adult male audiences and features more complex themes, psychological depth, and mature content compared to shonen. Popular examples include Berserk, Vinland Saga, Ghost in the Shell, Monster, and Vagabond."
+  },
+  {
+    "id": "genre-isekai",
+    "title": "Isekai anime genre",
+    "content": "Isekai is a subgenre where characters are transported to or reborn in another world, often a fantasy or game-like setting. Popular examples include Sword Art Online, Re:Zero, Konosuba, That Time I Got Reincarnated as a Slime, and Mushoku Tensei."
+  },
+  {
+    "id": "sub-vs-dub",
+    "title": "Subtitled vs dubbed anime",
+    "content": "Sub (subtitled) anime keeps the original Japanese voice acting with translated text subtitles. Dub (dubbed) anime replaces the Japanese audio with voice acting in another language. Many fans prefer sub for authentic performances, while others prefer dub for easier viewing. Choosing 'both' means you enjoy either format depending on the anime."
+  },
+  {
+    "id": "completion",
+    "title": "What happens after completing all steps",
+    "content": "After completing all three steps (Profile, Food, and Anime), your onboarding is done! The assistant will show a summary of your preferences. Your profile information can be used to personalize recommendations and tailor future interactions to your preferences."
+  }
+]
