@@ -47,7 +47,7 @@
   "
 >
   <div class="px-4 py-4 border-b border-ink/8">
-    <h2 class="font-serif text-base tracking-tight">Your Answers</h2>
+    <h2 class="font-grotesk text-base tracking-tight">Your Answers</h2>
   </div>
 
   <div id="panel-scroll" class="flex-1 overflow-y-auto px-3 py-4">

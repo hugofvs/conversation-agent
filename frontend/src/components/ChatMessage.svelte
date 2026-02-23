@@ -11,7 +11,7 @@
 {:else}
   <div class="flex justify-start">
     <div
-      class="bg-surface rounded-2xl rounded-bl-sm px-5 py-3 max-w-[75%] text-[15px] leading-relaxed shadow-[0_1px_4px_rgba(44,37,32,0.06)]"
+      class="bg-surface rounded-2xl rounded-bl-sm px-5 py-3 max-w-[75%] text-[15px] leading-relaxed shadow-[0_1px_4px_rgba(0,0,0,0.06)]"
       class:text-red-700={isError}
     >
       {text}

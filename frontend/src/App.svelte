@@ -126,7 +126,7 @@
 <div class="bg-canvas h-screen flex flex-col overflow-hidden">
   <header class="bg-surface border-b border-ink/8 px-6 py-5">
     <div class="max-w-3xl mx-auto lg:max-w-none">
-      <h1 class="font-serif text-xl tracking-tight mb-4">Conversation Agent</h1>
+      <h1 class="font-grotesk text-xl tracking-tight mb-4">Conversation Agent</h1>
       <StepProgress {currentStep} />
     </div>
   </header>

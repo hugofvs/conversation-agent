@@ -35,7 +35,7 @@
   }
 </script>
 
-<div class="py-2 px-3 rounded-lg transition-colors {isActive ? 'bg-amber-soft ring-1 ring-amber/25' : value != null ? 'bg-sage-soft/50' : ''}">
+<div class="py-2 px-3 rounded-xl transition-colors {isActive ? 'bg-amber-soft ring-1 ring-amber/25' : value != null ? 'bg-sage-soft/50' : ''}">
   <!-- svelte-ignore a11y_label_has_associated_control -->
   <label class="block">
   <span class="block text-xs mb-1.5 {isActive ? 'text-amber font-medium' : 'text-ink-secondary'}">
@@ -52,7 +52,7 @@
       {disabled}
       onchange={handleTextChange}
       placeholder="..."
-      class="w-full bg-transparent border border-ink/10 rounded-md px-2.5 py-1.5 text-sm text-ink placeholder:text-ink-muted focus:outline-none focus:ring-1 focus:ring-amber/25 focus:border-amber/40 transition disabled:opacity-40"
+      class="w-full bg-transparent border border-ink/10 rounded-xl px-2.5 py-1.5 text-sm text-ink placeholder:text-ink-muted focus:outline-none focus:ring-1 focus:ring-amber/25 focus:border-amber/40 transition disabled:opacity-40"
     />
 
   {:else if fieldDef.type === 'list'}
@@ -62,7 +62,7 @@
       {disabled}
       onchange={handleListChange}
       placeholder="Comma-separated..."
-      class="w-full bg-transparent border border-ink/10 rounded-md px-2.5 py-1.5 text-sm text-ink placeholder:text-ink-muted focus:outline-none focus:ring-1 focus:ring-amber/25 focus:border-amber/40 transition disabled:opacity-40"
+      class="w-full bg-transparent border border-ink/10 rounded-xl px-2.5 py-1.5 text-sm text-ink placeholder:text-ink-muted focus:outline-none focus:ring-1 focus:ring-amber/25 focus:border-amber/40 transition disabled:opacity-40"
     />
 
   {:else if fieldDef.type === 'enum'}
@@ -70,7 +70,7 @@
       value={value != null ? String(value) : ''}
       {disabled}
       onchange={handleSelectChange}
-      class="w-full bg-transparent border border-ink/10 rounded-md px-2.5 py-1.5 text-sm text-ink focus:outline-none focus:ring-1 focus:ring-amber/25 focus:border-amber/40 transition disabled:opacity-40 cursor-pointer"
+      class="w-full bg-transparent border border-ink/10 rounded-xl px-2.5 py-1.5 text-sm text-ink focus:outline-none focus:ring-1 focus:ring-amber/25 focus:border-amber/40 transition disabled:opacity-40 cursor-pointer"
     >
       <option value="" disabled>Select...</option>
       {#each fieldDef.options as opt}
