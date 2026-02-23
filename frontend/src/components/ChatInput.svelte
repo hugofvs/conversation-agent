@@ -17,16 +17,21 @@
     options?.map((v, i) => ({ value: v, label: optionLabels?.[i] ?? v })) ?? null
   )
 
-  const filteredItems = $derived.by(() => {
-    if (!useAutocomplete || !optionItems) return []
+  // The active search segment (accounts for multi-select commas)
+  const currentQuery = $derived.by(() => {
+    if (!useAutocomplete) return ''
     const raw = inputText
-    let query = raw
     if (isMultiSelect) {
       const parts = raw.split(',')
-      query = parts[parts.length - 1].trim()
+      return parts[parts.length - 1].trim()
     }
-    if (!query) return optionItems
-    const q = query.toLowerCase()
+    return raw.trim()
+  })
+
+  const filteredItems = $derived.by(() => {
+    if (!useAutocomplete || !optionItems) return []
+    if (!currentQuery) return optionItems
+    const q = currentQuery.toLowerCase()
     return optionItems.filter(item => item.label.toLowerCase().includes(q))
   })
 
@@ -71,6 +76,43 @@
         ? 'Type to filter options...'
         : 'Type a message...'
   )
+
+  // Virtualized dropdown
+  const ITEM_HEIGHT = 36
+  const MAX_VISIBLE = 7
+  let dropdownEl = $state(null)
+  let dropdownScrollTop = $state(0)
+
+  const visibleRange = $derived.by(() => {
+    const start = Math.max(0, Math.floor(dropdownScrollTop / ITEM_HEIGHT) - 2)
+    const end = Math.min(filteredItems.length, start + MAX_VISIBLE + 4)
+    return { start, end }
+  })
+
+  // Scroll highlighted item into view
+  $effect(() => {
+    if (highlightedIndex >= 0 && dropdownEl) {
+      const itemTop = highlightedIndex * ITEM_HEIGHT
+      const itemBottom = itemTop + ITEM_HEIGHT
+      if (itemTop < dropdownEl.scrollTop) {
+        dropdownEl.scrollTop = itemTop
+      } else if (itemBottom > dropdownEl.scrollTop + dropdownEl.clientHeight) {
+        dropdownEl.scrollTop = itemBottom - dropdownEl.clientHeight
+      }
+    }
+  })
+
+  function highlightLabel(label, query) {
+    if (!query) return [{ text: label, match: false }]
+    const lower = label.toLowerCase()
+    const idx = lower.indexOf(query.toLowerCase())
+    if (idx === -1) return [{ text: label, match: false }]
+    return [
+      { text: label.slice(0, idx), match: false },
+      { text: label.slice(idx, idx + query.length), match: true },
+      { text: label.slice(idx + query.length), match: false },
+    ].filter(s => s.text)
+  }
 
   function send(text) {
     const val = text.trim()
@@ -213,16 +255,32 @@
 
   <form onsubmit={handleSubmit} class="p-4 flex gap-3 relative">
     {#if dropdownOpen && filteredItems.length > 0}
-      <div class="absolute bottom-full left-4 right-20 mb-1 bg-surface border border-ink/10 rounded-xl shadow-lg max-h-48 overflow-y-auto z-10">
-        {#each filteredItems as item, i}
-          <button
-            type="button"
-            onmousedown={() => selectAutocompleteOption(item.value)}
-            class="w-full text-left px-4 py-2 text-sm transition {i === highlightedIndex ? 'bg-amber-soft text-ink' : 'text-ink-secondary hover:bg-canvas'}"
-          >
-            {item.label}
-          </button>
-        {/each}
+      <div
+        bind:this={dropdownEl}
+        onscroll={() => dropdownScrollTop = dropdownEl.scrollTop}
+        role="listbox"
+        id="autocomplete-listbox"
+        class="absolute bottom-full left-4 right-20 mb-1 bg-surface border border-ink/10 rounded-xl shadow-lg overflow-y-auto overflow-x-hidden z-10"
+        style="max-height: {MAX_VISIBLE * ITEM_HEIGHT}px;"
+      >
+        <div style="height: {filteredItems.length * ITEM_HEIGHT}px; position: relative;">
+          {#each filteredItems.slice(visibleRange.start, visibleRange.end) as item, i}
+            {@const idx = visibleRange.start + i}
+            <button
+              type="button"
+              id="autocomplete-option-{idx}"
+              role="option"
+              aria-selected={idx === highlightedIndex}
+              onmousedown={() => selectAutocompleteOption(item.value)}
+              class="absolute w-full text-left px-4 text-sm transition flex items-center {idx === highlightedIndex ? 'bg-amber-soft text-ink' : 'text-ink-secondary hover:bg-canvas'}"
+              style="top: {idx * ITEM_HEIGHT}px; height: {ITEM_HEIGHT}px;"
+            >
+              {#each highlightLabel(item.label, currentQuery) as seg}
+                <span class={seg.match ? 'text-amber font-medium' : ''}>{seg.text}</span>
+              {/each}
+            </button>
+          {/each}
+        </div>
       </div>
     {/if}
 
@@ -241,6 +299,10 @@
         type="text"
         placeholder={ghostSuffix ? '' : placeholderText}
         autocomplete="off"
+        role={useAutocomplete ? 'combobox' : undefined}
+        aria-expanded={useAutocomplete ? dropdownOpen && filteredItems.length > 0 : undefined}
+        aria-controls={useAutocomplete ? 'autocomplete-listbox' : undefined}
+        aria-activedescendant={highlightedIndex >= 0 ? `autocomplete-option-${highlightedIndex}` : undefined}
         {disabled}
         onkeydown={handleKeydown}
         oninput={handleInput}

@@ -86,31 +86,51 @@ describe('ChatInput', () => {
     it('shows dropdown on focus', async () => {
       render(ChatInput, { onSend: vi.fn(), activeQuestion })
 
-      const input = screen.getByRole('textbox')
+      const input = screen.getByRole('combobox')
       await fireEvent.focus(input)
 
-      expect(screen.getByText('Apple')).toBeInTheDocument()
-      expect(screen.getByText('Banana')).toBeInTheDocument()
-      expect(screen.getByText('Elderberry')).toBeInTheDocument()
+      const listbox = screen.getByRole('listbox')
+      expect(listbox).toBeInTheDocument()
+      const options = screen.getAllByRole('option')
+      expect(options.length).toBe(5)
+      expect(options[0]).toHaveTextContent('Apple')
+      expect(options[4]).toHaveTextContent('Elderberry')
     })
 
     it('filters dropdown as user types', async () => {
       render(ChatInput, { onSend: vi.fn(), activeQuestion })
 
-      const input = screen.getByRole('textbox')
+      const input = screen.getByRole('combobox')
       await fireEvent.focus(input)
       await userEvent.type(input, 'ber')
 
-      expect(screen.getByText('Elderberry')).toBeInTheDocument()
-      expect(screen.queryByText('Apple')).not.toBeInTheDocument()
-      expect(screen.queryByText('Date')).not.toBeInTheDocument()
+      const options = screen.getAllByRole('option')
+      expect(options.length).toBe(1)
+      expect(options[0]).toHaveTextContent('Elderberry')
+    })
+
+    it('highlights matched text in dropdown items', async () => {
+      render(ChatInput, { onSend: vi.fn(), activeQuestion })
+
+      const input = screen.getByRole('combobox')
+      await fireEvent.focus(input)
+      await userEvent.type(input, 'ber')
+
+      const option = screen.getByRole('option')
+      // "Elder" + "ber" (highlighted) + "ry"
+      const spans = option.querySelectorAll('span')
+      expect(spans.length).toBe(3)
+      expect(spans[0].textContent).toBe('Elder')
+      expect(spans[1].textContent).toBe('ber')
+      expect(spans[1].className).toContain('text-amber')
+      expect(spans[2].textContent).toBe('ry')
     })
 
     it('ArrowDown + Tab fills option into input without submitting', async () => {
       const onSend = vi.fn()
       render(ChatInput, { onSend, activeQuestion })
 
-      const input = screen.getByRole('textbox')
+      const input = screen.getByRole('combobox')
       await fireEvent.focus(input)
       await fireEvent.keyDown(input, { key: 'ArrowDown' })
       await fireEvent.keyDown(input, { key: 'Tab' })
@@ -122,12 +142,62 @@ describe('ChatInput', () => {
     it('Escape closes dropdown', async () => {
       render(ChatInput, { onSend: vi.fn(), activeQuestion })
 
-      const input = screen.getByRole('textbox')
+      const input = screen.getByRole('combobox')
       await fireEvent.focus(input)
-      expect(screen.getByText('Apple')).toBeInTheDocument()
+      expect(screen.getByRole('listbox')).toBeInTheDocument()
 
       await fireEvent.keyDown(input, { key: 'Escape' })
-      expect(screen.queryByText('Apple')).not.toBeInTheDocument()
+      expect(screen.queryByRole('listbox')).not.toBeInTheDocument()
+    })
+
+    it('sets ARIA attributes on input', async () => {
+      render(ChatInput, { onSend: vi.fn(), activeQuestion })
+
+      const input = screen.getByRole('combobox')
+      expect(input).toHaveAttribute('aria-controls', 'autocomplete-listbox')
+      expect(input).toHaveAttribute('aria-expanded', 'false')
+
+      await fireEvent.focus(input)
+      expect(input).toHaveAttribute('aria-expanded', 'true')
+    })
+
+    it('highlights active option with aria-selected', async () => {
+      render(ChatInput, { onSend: vi.fn(), activeQuestion })
+
+      const input = screen.getByRole('combobox')
+      await fireEvent.focus(input)
+      await fireEvent.keyDown(input, { key: 'ArrowDown' })
+
+      const options = screen.getAllByRole('option')
+      expect(options[0]).toHaveAttribute('aria-selected', 'true')
+      expect(options[1]).toHaveAttribute('aria-selected', 'false')
+    })
+
+    it('Enter submits free text even if it does not match an option', async () => {
+      const onSend = vi.fn()
+      render(ChatInput, { onSend, activeQuestion })
+
+      const input = screen.getByRole('combobox')
+      await userEvent.type(input, 'custom value')
+      await fireEvent.submit(input.closest('form'))
+
+      expect(onSend).toHaveBeenCalledWith('custom value')
+    })
+
+    it('renders virtualized items for large option sets', async () => {
+      const manyOptions = Array.from({ length: 100 }, (_, i) => `option_${i}`)
+      const manyLabels = Array.from({ length: 100 }, (_, i) => `Option ${i}`)
+      const bigQuestion = { options: manyOptions, option_labels: manyLabels }
+
+      render(ChatInput, { onSend: vi.fn(), activeQuestion: bigQuestion })
+
+      const input = screen.getByRole('combobox')
+      await fireEvent.focus(input)
+
+      // Should render fewer DOM nodes than total items (virtualized)
+      const renderedOptions = screen.getAllByRole('option')
+      expect(renderedOptions.length).toBeLessThan(100)
+      expect(renderedOptions.length).toBeGreaterThan(0)
     })
   })
 
@@ -155,15 +225,17 @@ describe('ChatInput', () => {
 
     it('shows ghost suffix when typing matches an option prefix', async () => {
       render(ChatInput, { onSend: vi.fn(), activeQuestion })
-      const input = screen.getByRole('textbox')
+      const input = screen.getByRole('combobox')
       await userEvent.type(input, 'app')
 
-      expect(screen.getByText('le')).toBeInTheDocument()
+      const ghost = document.querySelector('[aria-hidden="true"] .text-ink-muted')
+      expect(ghost).toBeInTheDocument()
+      expect(ghost.textContent).toBe('le')
     })
 
     it('does not show ghost text when no prefix match', async () => {
       render(ChatInput, { onSend: vi.fn(), activeQuestion })
-      const input = screen.getByRole('textbox')
+      const input = screen.getByRole('combobox')
       await userEvent.type(input, 'xyz')
 
       const ghostOverlay = document.querySelector('[aria-hidden="true"]')
@@ -179,7 +251,7 @@ describe('ChatInput', () => {
 
     it('Tab accepts ghost text suggestion', async () => {
       render(ChatInput, { onSend: vi.fn(), activeQuestion })
-      const input = screen.getByRole('textbox')
+      const input = screen.getByRole('combobox')
       await userEvent.type(input, 'app')
       await fireEvent.keyDown(input, { key: 'Escape' }) // close dropdown
       await fireEvent.keyDown(input, { key: 'Tab' })
@@ -189,25 +261,29 @@ describe('ChatInput', () => {
 
     it('ghost text is case-insensitive', async () => {
       render(ChatInput, { onSend: vi.fn(), activeQuestion })
-      const input = screen.getByRole('textbox')
+      const input = screen.getByRole('combobox')
       await userEvent.type(input, 'BAN')
 
-      expect(screen.getByText('ana')).toBeInTheDocument()
+      const ghost = document.querySelector('[aria-hidden="true"] .text-ink-muted')
+      expect(ghost).toBeInTheDocument()
+      expect(ghost.textContent).toBe('ana')
     })
 
     it('multi-select suggests based on current segment', async () => {
       const multiQuestion = { ...activeQuestion, multi_select: true }
       render(ChatInput, { onSend: vi.fn(), activeQuestion: multiQuestion })
-      const input = screen.getByRole('textbox')
+      const input = screen.getByRole('combobox')
       await userEvent.type(input, 'apple, ban')
 
-      expect(screen.getByText('ana')).toBeInTheDocument()
+      const ghost = document.querySelector('[aria-hidden="true"] .text-ink-muted')
+      expect(ghost).toBeInTheDocument()
+      expect(ghost.textContent).toBe('ana')
     })
 
     it('Tab in multi-select appends comma after accepting ghost text', async () => {
       const multiQuestion = { ...activeQuestion, multi_select: true }
       render(ChatInput, { onSend: vi.fn(), activeQuestion: multiQuestion })
-      const input = screen.getByRole('textbox')
+      const input = screen.getByRole('combobox')
       await userEvent.type(input, 'app')
       await fireEvent.keyDown(input, { key: 'Escape' }) // close dropdown
       await fireEvent.keyDown(input, { key: 'Tab' })
