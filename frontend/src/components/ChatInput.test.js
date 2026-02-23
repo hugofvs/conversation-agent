@@ -106,7 +106,7 @@ describe('ChatInput', () => {
       expect(screen.queryByText('Date')).not.toBeInTheDocument()
     })
 
-    it('ArrowDown + Tab selects option', async () => {
+    it('ArrowDown + Tab fills option into input without submitting', async () => {
       const onSend = vi.fn()
       render(ChatInput, { onSend, activeQuestion })
 
@@ -115,7 +115,8 @@ describe('ChatInput', () => {
       await fireEvent.keyDown(input, { key: 'ArrowDown' })
       await fireEvent.keyDown(input, { key: 'Tab' })
 
-      expect(onSend).toHaveBeenCalledWith('apple')
+      expect(input).toHaveValue('apple')
+      expect(onSend).not.toHaveBeenCalled()
     })
 
     it('Escape closes dropdown', async () => {
@@ -142,5 +143,76 @@ describe('ChatInput', () => {
 
     expect(input).toHaveValue('42')
     expect(onSend).not.toHaveBeenCalled()
+  })
+
+  // --- Ghost text ---
+
+  describe('ghost text', () => {
+    const activeQuestion = {
+      options: ['apple', 'banana', 'cherry', 'date', 'elderberry'],
+      option_labels: ['Apple', 'Banana', 'Cherry', 'Date', 'Elderberry'],
+    }
+
+    it('shows ghost suffix when typing matches an option prefix', async () => {
+      render(ChatInput, { onSend: vi.fn(), activeQuestion })
+      const input = screen.getByRole('textbox')
+      await userEvent.type(input, 'app')
+
+      expect(screen.getByText('le')).toBeInTheDocument()
+    })
+
+    it('does not show ghost text when no prefix match', async () => {
+      render(ChatInput, { onSend: vi.fn(), activeQuestion })
+      const input = screen.getByRole('textbox')
+      await userEvent.type(input, 'xyz')
+
+      const ghostOverlay = document.querySelector('[aria-hidden="true"]')
+      expect(ghostOverlay).not.toBeInTheDocument()
+    })
+
+    it('shows default value as ghost text on empty input', () => {
+      const questionWithDefault = { default_value: '42' }
+      render(ChatInput, { onSend: vi.fn(), activeQuestion: questionWithDefault })
+
+      expect(screen.getByText('42')).toBeInTheDocument()
+    })
+
+    it('Tab accepts ghost text suggestion', async () => {
+      render(ChatInput, { onSend: vi.fn(), activeQuestion })
+      const input = screen.getByRole('textbox')
+      await userEvent.type(input, 'app')
+      await fireEvent.keyDown(input, { key: 'Escape' }) // close dropdown
+      await fireEvent.keyDown(input, { key: 'Tab' })
+
+      expect(input).toHaveValue('Apple')
+    })
+
+    it('ghost text is case-insensitive', async () => {
+      render(ChatInput, { onSend: vi.fn(), activeQuestion })
+      const input = screen.getByRole('textbox')
+      await userEvent.type(input, 'BAN')
+
+      expect(screen.getByText('ana')).toBeInTheDocument()
+    })
+
+    it('multi-select suggests based on current segment', async () => {
+      const multiQuestion = { ...activeQuestion, multi_select: true }
+      render(ChatInput, { onSend: vi.fn(), activeQuestion: multiQuestion })
+      const input = screen.getByRole('textbox')
+      await userEvent.type(input, 'apple, ban')
+
+      expect(screen.getByText('ana')).toBeInTheDocument()
+    })
+
+    it('Tab in multi-select appends comma after accepting ghost text', async () => {
+      const multiQuestion = { ...activeQuestion, multi_select: true }
+      render(ChatInput, { onSend: vi.fn(), activeQuestion: multiQuestion })
+      const input = screen.getByRole('textbox')
+      await userEvent.type(input, 'app')
+      await fireEvent.keyDown(input, { key: 'Escape' }) // close dropdown
+      await fireEvent.keyDown(input, { key: 'Tab' })
+
+      expect(input).toHaveValue('Apple, ')
+    })
   })
 })

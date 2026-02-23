@@ -30,9 +30,43 @@
     return optionItems.filter(item => item.label.toLowerCase().includes(q))
   })
 
+  // Ghost text: find the first option whose label starts with the current segment
+  const ghostText = $derived.by(() => {
+    const raw = inputText
+    let currentSegment = raw
+    let prefix = ''
+
+    if (isMultiSelect) {
+      const parts = raw.split(',')
+      currentSegment = parts[parts.length - 1].trimStart()
+      if (parts.length > 1) prefix = parts.slice(0, -1).join(',') + ', '
+    }
+
+    // Empty input with no multi-select prefix: show defaultValue
+    if (!currentSegment && !prefix) return defaultValue ?? ''
+
+    if (!optionItems || !currentSegment) return ''
+
+    const seg = currentSegment.toLowerCase()
+    const match = optionItems.find(item => item.label.toLowerCase().startsWith(seg))
+    if (!match) return ''
+
+    return prefix + match.label
+  })
+
+  const ghostSuffix = $derived(
+    ghostText && inputText
+      ? (ghostText.toLowerCase().startsWith(inputText.toLowerCase())
+          ? ghostText.slice(inputText.length)
+          : '')
+      : ghostText && !inputText.trim()
+        ? ghostText
+        : ''
+  )
+
   const placeholderText = $derived(
     defaultValue
-      ? `${defaultValue} (press Tab)`
+      ? ''
       : useAutocomplete
         ? 'Type to filter options...'
         : 'Type a message...'
@@ -76,7 +110,22 @@
       if (dropdownOpen && filteredItems.length > 0) {
         e.preventDefault()
         const idx = highlightedIndex >= 0 ? highlightedIndex : 0
-        selectAutocompleteOption(filteredItems[idx].value)
+        const selected = filteredItems[idx].value
+        if (isMultiSelect) {
+          const parts = inputText.split(',').map(s => s.trim()).filter(Boolean)
+          parts.pop()
+          parts.push(selected)
+          inputText = parts.join(', ') + ', '
+        } else {
+          inputText = selected
+        }
+        dropdownOpen = false
+        highlightedIndex = -1
+        return
+      }
+      if (ghostSuffix) {
+        e.preventDefault()
+        inputText = isMultiSelect ? ghostText + ', ' : ghostText
         return
       }
       if (defaultValue && !inputText.trim()) {
@@ -177,19 +226,29 @@
       </div>
     {/if}
 
-    <input
-      bind:this={inputEl}
-      bind:value={inputText}
-      type="text"
-      placeholder={placeholderText}
-      autocomplete="off"
-      {disabled}
-      onkeydown={handleKeydown}
-      oninput={handleInput}
-      onfocus={handleFocus}
-      onblur={handleBlur}
-      class="flex-1 bg-canvas border border-ink/10 rounded-xl px-4 py-2.5 text-ink placeholder:text-ink-muted focus:outline-none focus:ring-2 focus:ring-amber/25 focus:border-amber/40 transition"
-    />
+    <div class="flex-1 relative">
+      {#if ghostSuffix}
+        <div
+          aria-hidden="true"
+          class="absolute inset-0 flex items-center px-4 py-2.5 pointer-events-none overflow-hidden whitespace-nowrap text-base"
+        >
+          <span class="invisible">{inputText}</span><span class="text-ink-muted">{ghostSuffix}</span>
+        </div>
+      {/if}
+      <input
+        bind:this={inputEl}
+        bind:value={inputText}
+        type="text"
+        placeholder={ghostSuffix ? '' : placeholderText}
+        autocomplete="off"
+        {disabled}
+        onkeydown={handleKeydown}
+        oninput={handleInput}
+        onfocus={handleFocus}
+        onblur={handleBlur}
+        class="w-full border border-ink/10 rounded-xl px-4 py-2.5 text-base text-ink placeholder:text-ink-muted focus:outline-none focus:ring-2 focus:ring-amber/25 focus:border-amber/40 transition {ghostSuffix ? 'bg-transparent' : 'bg-canvas'}"
+      />
+    </div>
     <button
       type="submit"
       {disabled}
